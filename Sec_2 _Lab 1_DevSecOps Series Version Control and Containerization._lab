@@ -1,0 +1,527 @@
+Lab 1: DevSecOps Series - Version Control and Containerization
+Learning Objectives
+By the end of this lab, students will be able to:
+
+• Install and configure Docker and Podman containerization platforms • Understand the security differences between Docker and Podman regarding root privileges • Create and manage containers using both Docker and Podman • Set up a Git repository with proper version control practices • Differentiate between Git Workflow and Forking Workflow methodologies • Integrate Jenkins CI/CD tool with Git repositories • Implement basic DevSecOps practices using open-source tools
+
+Prerequisites
+Before starting this lab, students should have:
+
+• Basic understanding of Linux command line operations • Familiarity with terminal/command prompt usage • Basic knowledge of software development concepts • Understanding of what containers and version control systems are (conceptual level)
+
+Lab Environment Setup
+Ready-to-Use Cloud Machines: Al Nafi provides pre-configured Linux-based cloud machines for this lab. Simply click Start Lab to access your dedicated environment. No need to build or configure your own virtual machine.
+
+Your lab environment includes: • Ubuntu 20.04 LTS or later • Internet connectivity for downloading packages • Sudo privileges for installation tasks • Pre-installed text editors (nano, vim)
+
+Task 1: Container Platform Installation and Comparison
+Subtask 1.1: Installing Docker
+Step 1: Update System Packages
+
+sudo apt update
+sudo apt upgrade -y
+Step 2: Install Required Dependencies
+
+sudo apt install apt-transport-https ca-certificates curl gnupg lsb-release -y
+Step 3: Add Docker's Official GPG Key
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+Step 4: Add Docker Repository
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+Step 5: Install Docker Engine
+
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
+Step 6: Start and Enable Docker Service
+
+sudo systemctl start docker
+sudo systemctl enable docker
+Step 7: Verify Docker Installation
+
+sudo docker --version
+sudo docker run hello-world
+Step 8: Add Current User to Docker Group (Optional)
+
+sudo usermod -aG docker $USER
+newgrp docker
+Subtask 1.2: Installing Podman
+Step 1: Install Podman
+
+sudo apt update
+sudo apt install podman -y
+Step 2: Verify Podman Installation
+
+podman --version
+podman run hello-world
+Step 3: Configure Podman Registries
+
+sudo nano /etc/containers/registries.conf
+Add the following content if not present:
+
+[registries.search]
+registries = ['docker.io', 'registry.fedoraproject.org', 'quay.io', 'registry.access.redhat.com', 'registry.centos.org']
+Subtask 1.3: Demonstrating Security Differences
+Step 1: Check Docker Container Root Privileges
+
+Create a simple container with Docker:
+
+docker run -it --name docker-test ubuntu:20.04 /bin/bash
+Inside the container, check the user:
+
+whoami
+id
+ps aux
+exit
+Step 2: Check Podman Container User Privileges
+
+Create a similar container with Podman:
+
+podman run -it --name podman-test ubuntu:20.04 /bin/bash
+Inside the container, check the user:
+
+whoami
+id
+ps aux
+exit
+Step 3: Compare Process Ownership
+
+On the host system, check running processes:
+
+# For Docker
+docker run -d --name docker-nginx nginx:alpine
+ps aux | grep nginx
+
+# For Podman
+podman run -d --name podman-nginx nginx:alpine
+ps aux | grep nginx
+Key Observation: Docker containers run as root by default, while Podman runs containers as the current user, providing better security isolation.
+
+Subtask 1.4: Container Management Comparison
+Step 1: Create and Manage Docker Containers
+
+# Create a web server container
+docker run -d -p 8080:80 --name docker-web nginx:alpine
+
+# List running containers
+docker ps
+
+# Stop and remove container
+docker stop docker-web
+docker rm docker-web
+Step 2: Create and Manage Podman Containers
+
+# Create a web server container
+podman run -d -p 8081:80 --name podman-web nginx:alpine
+
+# List running containers
+podman ps
+
+# Stop and remove container
+podman stop podman-web
+podman rm podman-web
+Task 2: Git Repository Setup and CI/CD Integration
+Subtask 2.1: Installing Git and Initial Configuration
+Step 1: Install Git
+
+sudo apt update
+sudo apt install git -y
+Step 2: Configure Git
+
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+git config --global init.defaultBranch main
+Step 3: Verify Git Configuration
+
+git config --list
+Subtask 2.2: Setting Up a Local Git Repository
+Step 1: Create Project Directory
+
+mkdir devsecops-project
+cd devsecops-project
+Step 2: Initialize Git Repository
+
+git init
+Step 3: Create Sample Application Files
+
+Create a simple web application:
+
+# Create HTML file
+cat > index.html << EOF
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DevSecOps Lab Project</title>
+</head>
+<body>
+    <h1>Welcome to DevSecOps Lab</h1>
+    <p>This is a sample application for demonstrating Git workflows.</p>
+</body>
+</html>
+EOF
+
+# Create Dockerfile
+cat > Dockerfile << EOF
+FROM nginx:alpine
+COPY index.html /usr/share/nginx/html/
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+EOF
+
+# Create README file
+cat > README.md << EOF
+# DevSecOps Lab Project
+
+This project demonstrates:
+- Git version control
+- Container deployment
+- CI/CD integration
+
+## Usage
+Build and run the container:
+\`\`\`
+docker build -t devsecops-app .
+docker run -p 8080:80 devsecops-app
+\`\`\`
+EOF
+Step 4: Add and Commit Files
+
+git add .
+git commit -m "Initial commit: Add sample web application"
+Subtask 2.3: Understanding Git Workflow vs Forking Workflow
+Git Workflow (Centralized)
+
+Step 1: Create Feature Branch
+
+git checkout -b feature/add-styling
+Step 2: Make Changes
+
+cat > style.css << EOF
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    color: #333;
+    text-align: center;
+}
+
+p {
+    color: #666;
+    text-align: center;
+    font-size: 18px;
+}
+EOF
+
+# Update HTML to include CSS
+cat > index.html << EOF
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DevSecOps Lab Project</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+    <h1>Welcome to DevSecOps Lab</h1>
+    <p>This is a sample application for demonstrating Git workflows.</p>
+    <p>Now with improved styling!</p>
+</body>
+</html>
+EOF
+Step 3: Commit Changes
+
+git add .
+git commit -m "Add CSS styling to web application"
+Step 4: Merge Back to Main
+
+git checkout main
+git merge feature/add-styling
+git branch -d feature/add-styling
+Forking Workflow Simulation
+
+Step 1: Create Bare Repository (Simulating Remote)
+
+cd ..
+git clone --bare devsecops-project devsecops-project.git
+Step 2: Clone as Different Developer
+
+git clone devsecops-project.git developer-fork
+cd developer-fork
+Step 3: Make Changes in Fork
+
+git checkout -b feature/add-footer
+
+cat >> index.html << EOF
+    <footer>
+        <p>&copy; 2024 DevSecOps Lab. All rights reserved.</p>
+    </footer>
+</body>
+</html>
+EOF
+Step 4: Commit and Push Changes
+
+git add .
+git commit -m "Add footer to web application"
+git push origin feature/add-footer
+Subtask 2.4: Installing and Configuring Jenkins
+Step 1: Install Java (Jenkins Prerequisite)
+
+sudo apt update
+sudo apt install openjdk-11-jdk -y
+java -version
+Step 2: Add Jenkins Repository
+
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+
+echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+Step 3: Install Jenkins
+
+sudo apt update
+sudo apt install jenkins -y
+Step 4: Start and Enable Jenkins
+
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
+Step 5: Configure Firewall (if needed)
+
+sudo ufw allow 8080
+sudo ufw status
+Step 6: Access Jenkins Web Interface
+
+# Get initial admin password
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+Open web browser and navigate to: http://your-server-ip:8080
+
+Subtask 2.5: Integrating Git with Jenkins
+Step 1: Install Git Plugin in Jenkins
+
+Access Jenkins web interface
+Go to Manage Jenkins > Manage Plugins
+Search for "Git Plugin" and install if not already installed
+Restart Jenkins if required
+Step 2: Create Jenkins Job
+
+Click New Item
+Enter job name: devsecops-project-build
+Select Freestyle project
+Click OK
+Step 3: Configure Source Code Management
+
+In job configuration, scroll to Source Code Management
+Select Git
+Enter repository URL: /path/to/your/devsecops-project.git
+Set branch to build: */main
+Step 4: Add Build Steps
+
+Scroll to Build section
+Click Add build step > Execute shell
+Add the following script:
+#!/bin/bash
+echo "Starting DevSecOps build process..."
+
+# Build Docker image
+docker build -t devsecops-app:$BUILD_NUMBER .
+
+# Run security scan (basic example)
+echo "Running basic security checks..."
+docker run --rm -v $(pwd):/app alpine:latest sh -c "cd /app && find . -name '*.html' -exec echo 'Checking: {}' \;"
+
+# Test the application
+echo "Testing application..."
+docker run -d -p 8082:80 --name test-app-$BUILD_NUMBER devsecops-app:$BUILD_NUMBER
+sleep 5
+curl -f http://localhost:8082 || exit 1
+docker stop test-app-$BUILD_NUMBER
+docker rm test-app-$BUILD_NUMBER
+
+echo "Build completed successfully!"
+Step 5: Configure Build Triggers
+
+In Build Triggers section
+Check Poll SCM
+Set schedule: H/5 * * * * (polls every 5 minutes)
+Step 6: Save and Test
+
+Click Save
+Click Build Now to test the job
+Subtask 2.6: Creating a Complete CI/CD Pipeline
+Step 1: Create Jenkinsfile
+
+In your project directory, create a Jenkinsfile:
+
+cd ~/devsecops-project
+cat > Jenkinsfile << 'EOF'
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_IMAGE = 'devsecops-app'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code...'
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo 'Building Docker image...'
+                script {
+                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                    sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+                }
+            }
+        }
+        
+        stage('Security Scan') {
+            steps {
+                echo 'Running security scans...'
+                script {
+                    // Basic file security check
+                    sh 'find . -name "*.html" -exec echo "Scanning: {}" \\;'
+                    
+                    // Check for common security issues
+                    sh '''
+                        echo "Checking for hardcoded secrets..."
+                        grep -r "password\\|secret\\|key" . --exclude-dir=.git || echo "No obvious secrets found"
+                    '''
+                }
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+                script {
+                    sh """
+                        docker run -d -p 8083:80 --name test-container-${BUILD_NUMBER} ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        sleep 10
+                        curl -f http://localhost:8083 || exit 1
+                        docker stop test-container-${BUILD_NUMBER}
+                        docker rm test-container-${BUILD_NUMBER}
+                    """
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            steps {
+                echo 'Deploying application...'
+                script {
+                    sh """
+                        # Stop existing container if running
+                        docker stop devsecops-app-prod || true
+                        docker rm devsecops-app-prod || true
+                        
+                        # Deploy new version
+                        docker run -d -p 8084:80 --name devsecops-app-prod ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        echo "Application deployed at http://localhost:8084"
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Cleaning up...'
+            sh "docker image prune -f"
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
+EOF
+Step 2: Commit Pipeline Configuration
+
+git add Jenkinsfile
+git commit -m "Add Jenkins pipeline configuration"
+Step 3: Create Pipeline Job in Jenkins
+
+In Jenkins, click New Item
+Enter name: devsecops-pipeline
+Select Pipeline
+Click OK
+In Pipeline section, select Pipeline script from SCM
+Choose Git as SCM
+Enter repository URL
+Set branch: */main
+Script Path: Jenkinsfile
+Click Save
+Step 4: Run the Pipeline
+
+Click Build Now
+Monitor the pipeline execution in Blue Ocean or Console Output
+Troubleshooting Common Issues
+Docker Issues
+Permission Denied Error
+
+# Add user to docker group
+sudo usermod -aG docker $USER
+newgrp docker
+Docker Service Not Running
+
+sudo systemctl start docker
+sudo systemctl status docker
+Podman Issues
+Registry Configuration Problems
+
+# Check registries configuration
+cat /etc/containers/registries.conf
+
+# Test registry connectivity
+podman search nginx
+Git Issues
+Authentication Problems
+
+# Configure credentials
+git config --global credential.helper store
+Merge Conflicts
+
+# Check status
+git status
+
+# Resolve conflicts manually, then
+git add .
+git commit -m "Resolve merge conflicts"
+Jenkins Issues
+Port Already in Use
+
+# Check what's using port 8080
+sudo netstat -tlnp | grep 8080
+
+# Change Jenkins port if needed
+sudo nano /etc/default/jenkins
+# Change HTTP_PORT=8080 to HTTP_PORT=8081
+sudo systemctl restart jenkins
+Build Failures
+
+Check Jenkins logs: sudo journalctl -u jenkins -f
+Verify Docker permissions for Jenkins user
+Ensure all required plugins are installed
+Conclusion
+In this comprehensive lab, you have successfully:
+
+Container Security Understanding: You installed both Docker and Podman, experiencing firsthand how Podman provides enhanced security by running containers without root privileges, while Docker requires additional configuration for similar security posture.
+
+Version Control Mastery: You set up Git repositories and learned the practical differences between centralized Git workflow and forking workflow, understanding when to use each approach in real-world development scenarios.
+
+CI/CD Integration: You installed and configured Jenkins, creating both simple build jobs and comprehensive pipelines that integrate with your Git repositories, demonstrating the foundation of DevSecOps practices.
+
+Security-First Approach: Throughout the lab, you implemented security considerations from the beginning, including container privilege management, code scanning, and secure deployment practices.
+
+Why This Matters: These skills form the backbone of modern DevSecOps practices. Understanding container security differences helps you make informed decisions about deployment platforms. Git workflow knowledge enables effective team collaboration. Jenkins integration provides the automation foundation necessary for continuous integration and deployment, while maintaining security throughout the development lifecycle.
+
+The combination of these technologies creates a robust foundation for implementing DevSecOps practices in any organization, ensuring that security is built into every step of the development and deployment process rather than being an afterthought.
+
